@@ -1,3 +1,5 @@
+# Drop Tower Project - Anuj Pal
+# reads FSR 402 sensor data from ESP32 and streams to browser
 import serial
 import threading
 from flask import Flask, render_template_string
