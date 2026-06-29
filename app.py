@@ -1,5 +1,6 @@
 # Drop Tower Project - Anuj Pal
 # reads FSR 402 sensor data from ESP32 and streams to browser
+import os
 import serial
 import threading
 from flask import Flask, render_template_string
@@ -7,16 +8,20 @@ from flask_socketio import SocketIO
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
+device_connected = False
 
-# ── CHANGE THIS to your port when you plug in the ESP32 ──────────────────────
-PORT = "/dev/cu.usbserial-0001"
-BAUD = 9600
-# ─────────────────────────────────────────────────────────────────────────────
+
+SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/cu.usbserial-0001")
+BAUD = int(os.getenv("BAUD", "9600"))
+SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
 
 def read_serial():
+    global device_connected
     try:
-        ser = serial.Serial(PORT, BAUD, timeout=1)
-        print(f"Connected to {PORT}")
+        ser = serial.Serial(SERIAL_PORT, BAUD, timeout=1)
+        print(f"Connected to {SERIAL_PORT}")
+        device_connected = True
+        socketio.emit("device_status", {"connected": True})
         while True:
             line = ser.readline().decode("utf-8").strip()
             if "," in line:
@@ -26,15 +31,8 @@ def read_serial():
                     socketio.emit("reading", {"skin": skin, "skull": skull, "brain": brain})
     except Exception as e:
         print(f"Serial error: {e}")
-        print("Running in DEMO MODE — random data")
-        import random, time
-        while True:
-            socketio.emit("reading", {
-                "skin":  random.randint(100, 400),
-                "skull": random.randint(80, 300),
-                "brain": random.randint(50, 200)
-            })
-            time.sleep(0.1)
+        device_connected = False
+        socketio.emit("device_status", {"connected": False})
 
 @app.route("/")
 def index():
@@ -44,5 +42,5 @@ def index():
 if __name__ == "__main__":
     t = threading.Thread(target=read_serial, daemon=True)
     t.start()
-    print("Open http://localhost:5000 in your browser")
-    socketio.run(app, port=5000)
+    print(f"Open http://localhost:{SERVER_PORT} in your browser")
+    socketio.run(app, host="127.0.0.1", port=SERVER_PORT)

@@ -82,8 +82,11 @@
   let t = 0;
   const socket = io();
 
-  socket.on("connect",    () => document.getElementById("status").textContent = "Connected");
-  socket.on("disconnect", () => document.getElementById("status").textContent = "Disconnected");
+  document.getElementById("status").textContent = "Connecting...";
+
+  socket.on("device_status", (d) => {
+    document.getElementById("status").textContent = d.connected ? "Device Connected" : "Device Disconnected";
+  });
 
   socket.on("reading", (d) => {
     document.getElementById("v1").textContent = d.skin;
